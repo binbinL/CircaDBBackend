@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from models import *
 from tortoise.queryset import QuerySet
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Union
+from typing import List, Union, Optional
 from fastapi.exceptions import HTTPException
 import os
 import pandas as pd
@@ -31,11 +31,17 @@ def get_matrix(file, key):
     return full_path
 
 
-@api.get("/gse/{key}")
-async def getGSE(key: str):
+# class InputData(BaseModel):
+#     gene_list: Optional[List[str]] = []
+
+
+# "Kirrel2","Hmcn1"
+@api.post("/gse/{key}")
+async def getGSE(key: str, gene: Optional[List[str]] = []):
     h5_path = './data/merged.h5'
-    print('gse', key)
-    index = 65
+
+    gene_id = await Gene.filter(name__in=gene).values('id', 'name')
+    print(gene_id)
 
     full_path = get_matrix(h5_path, key)
     data = []
@@ -44,8 +50,9 @@ async def getGSE(key: str):
         for t in full_path:
             tmp = {}
             dset = f[t]
-            tmp['attr'] = t
-            tmp['data'] = [str(num) for num in list(dset[()])[index]]
+            tmp['attr'] = t  # h5路径
+            for dict in gene_id:
+                tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id']]]
             tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
             data.append(tmp)
     print(data)
