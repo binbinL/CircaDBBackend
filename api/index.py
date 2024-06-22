@@ -18,12 +18,38 @@ async def GetOneGene(key: str):
     return geneData
 
 
+def get_matrix(file, key):
+    full_path = []
+
+    def print_attrs(name, obj):
+        # isinstance(obj, h5py.Dataset) and
+        if name.endswith("data") and name.startswith(key):
+            full_path.append(name)
+
+    with h5py.File(file, 'r') as f:
+        f.visititems(print_attrs)
+    return full_path
+
+
 @api.get("/gse/{key}")
 async def getGSE(key: str):
+    h5_path = './data/merged.h5'
     print('gse', key)
-    return {
-        'gse': key
-    }
+    index = 65
+
+    full_path = get_matrix(h5_path, key)
+    data = []
+    # str_array = list(map(str, float_array))
+    with h5py.File(os.path.join(h5_path), 'r') as f:
+        for t in full_path:
+            tmp = {}
+            dset = f[t]
+            tmp['attr'] = t
+            tmp['data'] = [str(num) for num in list(dset[()])[index]]
+            tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
+            data.append(tmp)
+    print(data)
+    return data
 
 
 @api.get("/{omics}")
