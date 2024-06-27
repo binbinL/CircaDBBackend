@@ -31,8 +31,6 @@ def get_matrix(file, key):
     return full_path
 
 
-# class InputData(BaseModel):
-#     gene_list: Optional[List[str]] = []
 
 
 # "Kirrel2","Hmcn1"
@@ -61,7 +59,7 @@ async def getGSE(key: str, gene: Optional[List[str]] = []):
 
 @api.get("/{omics}")
 async def GetOmicsData(omics: str):
-    omics_mapping = {'trans': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
+    omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
     result = omics_mapping.get(omics, '')
     omics = await JTKValue.filter(omics=result).values('GSE_id', 'tissue')
     unique_dict_list = [dict(t) for t in {tuple(d.items()) for d in omics}]
