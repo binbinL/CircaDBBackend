@@ -7,6 +7,7 @@ from fastapi.exceptions import HTTPException
 import os
 import pandas as pd
 import h5py
+from utils import respone_code
 
 api = APIRouter()
 
@@ -15,7 +16,7 @@ api = APIRouter()
 async def GetOneGene(key: str):
     print('gene', key)
     geneData = await JTKValue.filter(gene__name=key).order_by('JTK_pvalue')  # 升序
-    return geneData
+    return respone_code.resp_200(data=geneData)
 
 
 def get_matrix(file, key):
@@ -29,8 +30,6 @@ def get_matrix(file, key):
     with h5py.File(file, 'r') as f:
         f.visititems(print_attrs)
     return full_path
-
-
 
 
 # "Kirrel2","Hmcn1"
@@ -54,7 +53,7 @@ async def getGSE(key: str, gene: Optional[List[str]] = []):
             tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
             data.append(tmp)
     print(data)
-    return data
+    return respone_code.resp_200(data=data)
 
 
 @api.get("/{omics}")
@@ -70,12 +69,12 @@ async def GetOmicsData(omics: str):
             data[i['tissue']] += 1
         else:
             data[i['tissue']] = 1
-    return data
+    return respone_code.resp_200(data=data)
 
 
 @api.get("/{omics}/{tissue}")
 async def GetOmicsAndTissueData(omics: str, tissue: str):
-    omics_mapping = {'trans': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
+    omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
     result = omics_mapping.get(omics, '')
     print(omics, tissue)
 
@@ -84,4 +83,4 @@ async def GetOmicsAndTissueData(omics: str, tissue: str):
     # print(unique_dict_list)
 
     GseData = await JTKValue.filter(omics=result, tissue=tissue).distinct().values('GSE__GSE', 'GSE__title')
-    return GseData
+    return respone_code.resp_200(data=GseData)
