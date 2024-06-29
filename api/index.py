@@ -15,7 +15,8 @@ api = APIRouter()
 @api.get("/gene/{key}")
 async def GetOneGene(key: str):
     print('gene', key)
-    geneData = await JTKValue.filter(gene__name=key).order_by('JTK_pvalue')  # 升序
+    geneData = await JTKValue.filter(gene__name=key).order_by('JTK_pvalue').values('JTK_pvalue','JTK_BH_Q')  # 升序
+    print(geneData)
     return respone_code.resp_200(data=geneData)
 
 
@@ -63,12 +64,17 @@ async def GetOmicsData(omics: str):
     omics = await JTKValue.filter(omics=result).values('GSE_id', 'tissue')
     unique_dict_list = [dict(t) for t in {tuple(d.items()) for d in omics}]
     print(unique_dict_list)
-    data = {}
+    tissue_count = {}
     for i in unique_dict_list:
-        if i['tissue'] in data:
-            data[i['tissue']] += 1
+        if i['tissue'] in tissue_count:
+            tissue_count[i['tissue']] += 1
         else:
-            data[i['tissue']] = 1
+            tissue_count[i['tissue']] = 1
+    genenames = await Gene.filter(type='Mus').values('name')
+    data = {}
+    data['tissue_count'] = tissue_count
+    data['genenames'] = [{'value': item['name'], 'name': item['name']} for item in genenames]
+    print(data)
     return respone_code.resp_200(data=data)
 
 
