@@ -15,7 +15,8 @@ api = APIRouter()
 @api.get("/gene/{key}")
 async def GetOneGene(key: str):
     print('gene', key)
-    geneData = await JTKValue.filter(gene__name=key).order_by('JTK_pvalue').values('JTK_pvalue','JTK_BH_Q')  # 升序
+    geneData = await JTKValue.filter(gene__name=key).order_by('JTK_pvalue').values('GSE__GSE', 'GSE__title',
+                                                                                   'JTK_pvalue', 'JTK_BH_Q')  # 升序
     print(geneData)
     return respone_code.resp_200(data=geneData)
 
@@ -33,7 +34,7 @@ def get_matrix(file, key):
     return full_path
 
 
-# "Kirrel2","Hmcn1"
+# "Kirrel2","Hmcn1" 暂时不用
 @api.post("/gse/{key}")
 async def getGSE(key: str, gene: Optional[List[str]] = []):
     h5_path = './data/merged.h5'
@@ -57,7 +58,29 @@ async def getGSE(key: str, gene: Optional[List[str]] = []):
     return respone_code.resp_200(data=data)
 
 
-@api.get("/{omics}")
+@api.get("/gse/gene")
+async def getGSE(gse: str, gene: str):
+    h5_path = './data/merged.h5'
+
+    gene_id = await Gene.filter(name=gene).values('id', 'name')
+    print(gene_id)
+
+    full_path = get_matrix(h5_path, gse)
+    data = []
+    with h5py.File(os.path.join(h5_path), 'r') as f:
+        for t in full_path:
+            tmp = {}
+            dset = f[t]
+            tmp['attr'] = t  # h5路径
+            for dict in gene_id:
+                tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id']]]
+            tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
+            data.append(tmp)
+    print(data)
+    return respone_code.resp_200(data=data)
+
+
+@api.get("/omics")
 async def GetOmicsData(omics: str):
     omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
     result = omics_mapping.get(omics, '')
@@ -78,8 +101,8 @@ async def GetOmicsData(omics: str):
     return respone_code.resp_200(data=data)
 
 
-@api.get("/{omics}/{tissue}")
-async def GetOmicsAndTissueData(omics: str, tissue: str):
+@api.get("/omics/tissue")
+async def GetTissueData(omics: str, tissue: str):
     omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
     result = omics_mapping.get(omics, '')
     print(omics, tissue)
@@ -89,4 +112,19 @@ async def GetOmicsAndTissueData(omics: str, tissue: str):
     # print(unique_dict_list)
 
     GseData = await JTKValue.filter(omics=result, tissue=tissue).distinct().values('GSE__GSE', 'GSE__title')
+    return respone_code.resp_200(data=GseData)
+
+
+@api.get("/omics/tissue/gene")
+async def GetJTKData(omics: str, gene: str, tissue: Union[str, None] = None):
+    omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
+    result = omics_mapping.get(omics, '')
+    print(omics, tissue, gene)
+    if tissue is None:
+        GseData = await JTKValue.filter(omics=result, gene__name=gene).distinct().order_by('JTK_pvalue').values(
+            'GSE__GSE', 'GSE__title', 'JTK_pvalue', 'JTK_BH_Q')
+    else:
+        GseData = await JTKValue.filter(omics=result, tissue=tissue, gene__name=gene).distinct().order_by(
+            'JTK_pvalue').values(
+            'GSE__GSE', 'GSE__title', 'JTK_pvalue', 'JTK_BH_Q')
     return respone_code.resp_200(data=GseData)
