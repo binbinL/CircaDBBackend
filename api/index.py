@@ -86,17 +86,17 @@ async def GetOmicsData(omics: str):
     result = omics_mapping.get(omics, '')
     omics = await JTKValue.filter(omics=result).values('GSE_id', 'tissue')
     unique_dict_list = [dict(t) for t in {tuple(d.items()) for d in omics}]
-    print(unique_dict_list)
+
     tissue_count = {}
     for i in unique_dict_list:
         if i['tissue'] in tissue_count:
             tissue_count[i['tissue']] += 1
         else:
             tissue_count[i['tissue']] = 1
-    genenames = await Gene.filter(type='Mus').values('name')
+    # genenames = await Gene.filter(type='Mus').values('name')
     data = {}
     data['tissue_count'] = tissue_count
-    data['genenames'] = [{'value': item['name'], 'name': item['name']} for item in genenames]
+    # data['genenames'] = [{'value': item['name'], 'name': item['name']} for item in genenames]
     print(data)
     return respone_code.resp_200(data=data)
 
@@ -120,11 +120,13 @@ async def GetJTKData(omics: str, gene: str, tissue: Union[str, None] = None):
     omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
     result = omics_mapping.get(omics, '')
     print(omics, tissue, gene)
+    print(tissue)
     if tissue is None:
         GseData = await JTKValue.filter(omics=result, gene__name=gene).distinct().order_by('JTK_pvalue').values(
             'GSE__GSE', 'GSE__title', 'JTK_pvalue', 'JTK_BH_Q')
+        print('no tissue', GseData)
     else:
         GseData = await JTKValue.filter(omics=result, tissue=tissue, gene__name=gene).distinct().order_by(
-            'JTK_pvalue').values(
-            'GSE__GSE', 'GSE__title', 'JTK_pvalue', 'JTK_BH_Q')
+            'JTK_pvalue').values('GSE__GSE', 'GSE__title', 'JTK_pvalue', 'JTK_BH_Q')
+        print(GseData)
     return respone_code.resp_200(data=GseData)
