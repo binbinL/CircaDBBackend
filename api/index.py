@@ -123,10 +123,10 @@ async def GetJTKData(omics: str, gene: str, tissue: Union[str, None] = None):
     print(tissue)
     if tissue is None:
         GseData = await JTKValue.filter(omics=result, gene__name=gene).distinct().order_by('JTK_pvalue').values(
-            'GSE__GSE', 'GSE__title', 'JTK_pvalue', 'JTK_BH_Q')
+            'GSE__GSE', 'GSE__title', 'gene__name', 'condition', 'JTK_pvalue', 'JTK_BH_Q')
         print('no tissue', GseData)
     else:
         GseData = await JTKValue.filter(omics=result, tissue=tissue, gene__name=gene).distinct().order_by(
-            'JTK_pvalue').values('GSE__GSE', 'GSE__title', 'JTK_pvalue', 'JTK_BH_Q')
+            'JTK_pvalue').values('GSE__GSE', 'GSE__title', 'gene__name', 'condition', 'JTK_pvalue', 'JTK_BH_Q')
         print(GseData)
     return respone_code.resp_200(data=GseData)
