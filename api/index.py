@@ -8,6 +8,7 @@ import os
 import pandas as pd
 import h5py
 from utils import respone_code
+from utils import DataTrans
 
 api = APIRouter()
 
@@ -76,8 +77,13 @@ async def getGSE(gse: str, gene: str):
                 tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id']]]
             tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
             data.append(tmp)
-    print(data)
-    return respone_code.resp_200(data=data)
+    result, xAxis, condition_data = DataTrans.getGseGeneData(data, gene)
+    res = {}
+    res['data'] = result
+    res['xAxis'] = xAxis
+    res['condition'] = condition_data
+    print(res)
+    return respone_code.resp_200(data=res)
 
 
 @api.get("/omics")
