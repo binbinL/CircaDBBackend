@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request
 from models import *
+
 from tortoise.queryset import QuerySet
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Union, Optional
@@ -11,6 +12,7 @@ from utils import respone_code
 from utils import DataTrans
 
 api = APIRouter()
+
 
 
 @api.get("/gene/{key}")
@@ -88,7 +90,7 @@ async def getGSE(gse: str, gene: str):
 
 @api.get("/omics")
 async def GetOmicsData(omics: str):
-    omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
+    omics_mapping = {'Transcriptome': 'RNA-Seq', 'Metabolome': 's2', '2': 's3', '3': 's3'}
     result = omics_mapping.get(omics, '')
     omics = await JTKValue.filter(omics=result).values('GSE_id', 'tissue')
     unique_dict_list = [dict(t) for t in {tuple(d.items()) for d in omics}]
