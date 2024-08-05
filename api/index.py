@@ -14,7 +14,6 @@ from utils import DataTrans
 api = APIRouter()
 
 
-
 @api.get("/gene/{key}")
 async def GetOneGene(key: str):
     print('gene', key)
@@ -80,11 +79,18 @@ async def getGSE(gse: str, gene: str):
             tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
             data.append(tmp)
     result, xAxis, condition_data = DataTrans.getGseGeneData(data, gene)
+    DetialData = await JTKValue.filter(GSE__GSE=gse, gene__name=gene).values('gene__name','tissue',
+                                                                             'condition', 'JTK_pvalue', 'JTK_BH_Q',
+                                                                             'JTK_period', 'JTK_adjphase',
+                                                                             'JTK_amplitude', 'meta2d_Base',
+                                                                             'meta2d_AMP', 'meta2d_rAMP')
     res = {}
     res['data'] = result
     res['xAxis'] = xAxis
     res['condition'] = condition_data
+    res['DetialData'] = DetialData
     print(res)
+    print(res['DetialData'])
     return respone_code.resp_200(data=res)
 
 
