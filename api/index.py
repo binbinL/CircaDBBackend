@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Request
 from models import *
-
 from tortoise.queryset import QuerySet
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Union, Optional
@@ -14,11 +13,26 @@ from utils import DataTrans
 api = APIRouter()
 
 
-@api.get("/gene/{key}")
-async def GetOneGene(key: str):
+# @api.get("/gene/{key}")
+# async def GetOneGene(key: str):
+#     print('gene', key)
+#     geneData = await JTKValue.filter(gene__name=key).order_by('JTK_pvalue').values('GSE__GSE', 'GSE__title',
+#                                                                                    'JTK_pvalue', 'JTK_BH_Q')  # 升序
+#     print(geneData)
+#     return respone_code.resp_200(data=geneData)
+
+@api.get("/{species}/gene/{key}")
+async def GetOneGene(species: str, key: str):
     print('gene', key)
-    geneData = await JTKValue.filter(gene__name=key).order_by('JTK_pvalue').values('GSE__GSE', 'GSE__title',
-                                                                                   'JTK_pvalue', 'JTK_BH_Q')  # 升序
+    if species == 'Mus':
+        geneData = await (MusValue.filter(gene__name=key, gene__type=species).order_by('pvalue')
+                          .values('GEOAccession__GSE', 'GEOAccession__title', 'pvalue', 'R2'))
+    elif species == 'Homo':
+        geneData = await (HomoValue.filter(gene__name=key, gene__type=species).order_by('pvalue')
+                          .values('GEOAccession__GSE', 'GEOAccession__title', 'pvalue', 'R2'))
+    else:
+        return respone_code.resp_400(message="Species not found")
+
     print(geneData)
     return respone_code.resp_200(data=geneData)
 
@@ -36,37 +50,42 @@ def get_matrix(file, key):
     return full_path
 
 
-# "Kirrel2","Hmcn1" 暂时不用
-@api.post("/gse/{key}")
-async def getGSE(key: str, gene: Optional[List[str]] = []):
+# # "Kirrel2","Hmcn1" 暂时不用
+# @api.post("/gse/{key}")
+# async def getGSE(key: str, gene: Optional[List[str]] = []):
+#     h5_path = './data/merged.h5'
+#
+#     gene_id = await Gene.filter(name__in=gene).values('id', 'name')
+#     print(gene_id)
+#
+#     full_path = get_matrix(h5_path, key)
+#     data = []
+#     # str_array = list(map(str, float_array))
+#     with h5py.File(os.path.join(h5_path), 'r') as f:
+#         for t in full_path:
+#             tmp = {}
+#             dset = f[t]
+#             tmp['attr'] = t  # h5路径
+#             for dict in gene_id:
+#                 tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id']]]
+#             tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
+#             data.append(tmp)
+#     print(data)
+#     return respone_code.resp_200(data=data)
+
+
+@api.get("/{species}/gse/gene")
+async def getGSE(species: str, gse: str, gene: str):
     h5_path = './data/merged.h5'
 
-    gene_id = await Gene.filter(name__in=gene).values('id', 'name')
-    print(gene_id)
+    gene_id = await Gene.filter(name=gene, type=species).values('id', 'name')
+    print(f'species={species},name={gene} ==> gene_id={gene_id}')
+    print(gene_id[0]['id'])
 
-    full_path = get_matrix(h5_path, key)
-    data = []
-    # str_array = list(map(str, float_array))
-    with h5py.File(os.path.join(h5_path), 'r') as f:
-        for t in full_path:
-            tmp = {}
-            dset = f[t]
-            tmp['attr'] = t  # h5路径
-            for dict in gene_id:
-                tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id']]]
-            tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
-            data.append(tmp)
-    print(data)
-    return respone_code.resp_200(data=data)
+    if species == 'Homo':
+        gene_id[0]['id'] -= 25439
 
-
-@api.get("/gse/gene")
-async def getGSE(gse: str, gene: str):
-    h5_path = './data/merged.h5'
-
-    gene_id = await Gene.filter(name=gene).values('id', 'name')
-    print(gene_id)
-
+    print(f'species={species},name={gene} ==> gene_id={gene_id}')
     full_path = get_matrix(h5_path, gse)
     data = []
     with h5py.File(os.path.join(h5_path), 'r') as f:
@@ -74,16 +93,23 @@ async def getGSE(gse: str, gene: str):
             tmp = {}
             dset = f[t]
             tmp['attr'] = t  # h5路径
+            # ?
             for dict in gene_id:
-                tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id']]]
+                tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id']-1]]
             tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
             data.append(tmp)
     result, xAxis, condition_data = DataTrans.getGseGeneData(data, gene)
-    DetialData = await JTKValue.filter(GSE__GSE=gse, gene__name=gene).values('gene__name','tissue',
-                                                                             'condition', 'JTK_pvalue', 'JTK_BH_Q',
-                                                                             'JTK_period', 'JTK_adjphase',
-                                                                             'JTK_amplitude', 'meta2d_Base',
-                                                                             'meta2d_AMP', 'meta2d_rAMP')
+    if species == 'Mus':
+        DetialData = await MusValue.filter(GEOAccession__GSE=gse, gene__name=gene).values('gene__name', 'tissue', 'condition',
+                                                                                 'pvalue', 'R2', 'amp', 'phase',
+                                                                                 'peakTime', 'offset')
+    elif species == 'Homo':
+        DetialData = await (
+            HomoValue.filter(GEOAccession__GSE=gse, gene__name=gene).values('gene__name', 'tissue', 'condition', 'pvalue', 'R2',
+                                                                   'amp', 'phase', 'peakTime', 'offset'))
+    else:
+        return respone_code.resp_400(message="Data not found")
+
     res = {}
     res['data'] = result
     res['xAxis'] = xAxis
@@ -94,11 +120,17 @@ async def getGSE(gse: str, gene: str):
     return respone_code.resp_200(data=res)
 
 
-@api.get("/omics")
-async def GetOmicsData(omics: str):
-    omics_mapping = {'Transcriptome': 'RNA-Seq', 'Metabolome': 's2', '2': 's3', '3': 's3'}
-    result = omics_mapping.get(omics, '')
-    omics = await JTKValue.filter(omics=result).values('GSE_id', 'tissue')
+@api.get("/{species}/omics")
+async def GetOmicsData(species: str, omics: str):
+
+    if species == 'Mus':
+        omics = await MusValue.filter(omics=omics).values('GEOAccession__GSE', 'tissue')
+    elif species == 'Homo':
+        omics = await HomoValue.filter(omics=omics).values('GEOAccession_id', 'tissue')
+    else:
+        print('Omic Search Error')
+        return respone_code.resp_400(message="Omic Error")
+
     unique_dict_list = [dict(t) for t in {tuple(d.items()) for d in omics}]
 
     tissue_count = {}
@@ -107,40 +139,69 @@ async def GetOmicsData(omics: str):
             tissue_count[i['tissue']] += 1
         else:
             tissue_count[i['tissue']] = 1
-    # genenames = await Gene.filter(type='Mus').values('name')
     data = {}
     data['tissue_count'] = tissue_count
-    # data['genenames'] = [{'value': item['name'], 'name': item['name']} for item in genenames]
     print(data)
     return respone_code.resp_200(data=data)
 
 
-@api.get("/omics/tissue")
-async def GetTissueData(omics: str, tissue: str):
-    omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
-    result = omics_mapping.get(omics, '')
-    print(omics, tissue)
+@api.get("/{species}/omics/tissue")
+async def GetTissueData(species: str, omics: str, tissue: str):
+    print(species, omics, tissue)
 
-    # GseData = await JTKValue.filter(omics=result, tissue=tissue).values('GSE__GSE', 'GSE__title')
-    # unique_dict_list = [dict(t) for t in {tuple(d.items()) for d in GseData}]
-    # print(unique_dict_list)
+    if species == 'Mus':
+        GseData = await MusValue.filter(omics=omics, tissue=tissue).distinct().values('GEOAccession__GSE', 'GEOAccession__title')
+    elif species == 'Homo':
+        GseData = await HomoValue.filter(omics=omics, tissue=tissue).distinct().values('GEOAccession__GSE', 'GEOAccession__title')
+    else:
+        print('Omic-Tissue Search Error')
+        return respone_code.resp_400(message="Omic-Tissue Error")
 
-    GseData = await JTKValue.filter(omics=result, tissue=tissue).distinct().values('GSE__GSE', 'GSE__title')
     return respone_code.resp_200(data=GseData)
 
 
-@api.get("/omics/tissue/gene")
-async def GetJTKData(omics: str, gene: str, tissue: Union[str, None] = None):
-    omics_mapping = {'Transcriptome': 'RNA-Seq', '1': 's2', '2': 's3', '3': 's3'}
-    result = omics_mapping.get(omics, '')
-    print(omics, tissue, gene)
-    print(tissue)
+@api.get("/{species}/omics/tissue/gene")
+async def GetDetailData(species: str, omics: str, gene: str, tissue: Union[str, None] = None):
+    print(species,omics, tissue, gene)
     if tissue is None:
-        GseData = await JTKValue.filter(omics=result, gene__name=gene).distinct().order_by('JTK_pvalue').values(
-            'GSE__GSE', 'GSE__title', 'gene__name', 'condition', 'JTK_pvalue', 'JTK_BH_Q')
-        print('no tissue', GseData)
+        if species == 'Mus':
+            GseData = await MusValue.filter(omics=omics, gene__name=gene, gene__type=species).distinct().order_by(
+                'pvalue').values('GEOAccession__GSE', 'GEOAccession__title', 'gene__name', 'condition', 'pvalue', 'amp',
+                                 'phase', 'peakTime', 'offset')
+            print('no tissue Mus', GseData)
+        elif species == 'Homo':
+            GseData = await HomoValue.filter(omics=omics, gene__name=gene, gene__type=species).distinct().order_by(
+                'pvalue').values('GEOAccession__GSE', 'GEOAccession__title', 'gene__name', 'condition', 'pvalue', 'amp',
+                                 'phase',
+                                 'peakTime', 'offset')
+            print('no tissue Mus', GseData)
+        else:
+            print('Detail Search Error')
+            return respone_code.resp_400(message="Detail Error")
+
+        # GseData = await JTKValue.filter(omics=omics, gene__name=gene).distinct().order_by('JTK_pvalue').values(
+        #     'GSE__GSE', 'GSE__title', 'gene__name', 'condition', 'JTK_pvalue', 'JTK_BH_Q')
+        # print('no tissue', GseData)
     else:
-        GseData = await JTKValue.filter(omics=result, tissue=tissue, gene__name=gene).distinct().order_by(
-            'JTK_pvalue').values('GSE__GSE', 'GSE__title', 'gene__name', 'condition', 'JTK_pvalue', 'JTK_BH_Q')
-        print(GseData)
+        if species == 'Mus':
+            GseData = await MusValue.filter(omics=omics, tissue=tissue, gene__name=gene,
+                                            gene__type=species).distinct().order_by(
+                'pvalue').values('GEOAccession__GSE', 'GEOAccession__title', 'gene__name', 'condition', 'pvalue', 'amp',
+                                 'phase',
+                                 'peakTime', 'offset')
+            print('no tissue Mus', GseData)
+        elif species == 'Homo':
+            GseData = await HomoValue.filter(omics=omics, tissue=tissue, gene__name=gene,
+                                            gene__type=species).distinct().order_by(
+                'pvalue').values('GEOAccession__GSE', 'GEOAccession__title', 'gene__name', 'condition', 'pvalue', 'amp',
+                                 'phase',
+                                 'peakTime', 'offset')
+            print('no tissue Mus', GseData)
+        else:
+            print('Detail Search Error')
+            return respone_code.resp_400(message="Detail Error")
+
+        # GseData = await JTKValue.filter(omics=result, tissue=tissue, gene__name=gene).distinct().order_by(
+        #     'JTK_pvalue').values('GSE__GSE', 'GSE__title', 'gene__name', 'condition', 'JTK_pvalue', 'JTK_BH_Q')
+        # print(GseData)
     return respone_code.resp_200(data=GseData)

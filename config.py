@@ -26,5 +26,4 @@ TORTOISE_ORM = {
     },
     'use_tz': False,
     'timezone': 'Asia/Shanghai'
-
 }
