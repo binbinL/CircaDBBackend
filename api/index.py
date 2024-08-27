@@ -83,7 +83,7 @@ async def getGSE(species: str, gse: str, gene: str):
     print(gene_id[0]['id'])
 
     if species == 'Homo':
-        gene_id[0]['id'] -= 25439
+        gene_id[0]['id'] -= 25239
 
     print(f'species={species},name={gene} ==> gene_id={gene_id}')
     full_path = get_matrix(h5_path, gse)
@@ -97,6 +97,7 @@ async def getGSE(species: str, gse: str, gene: str):
             for dict in gene_id:
                 tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id'] - 1]]
             tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
+            print(tmp)
             data.append(tmp)
     result, xAxis, condition_data = DataTrans.getGseGeneData(data, gene)
     if species == 'Mus':
