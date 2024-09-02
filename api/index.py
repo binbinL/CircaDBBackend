@@ -77,10 +77,14 @@ def get_matrix(file, key):
 @api.get("/{species}/gse/gene")
 async def getGSE(species: str, gse: str, gene: str):
     h5_path = './data/merged.h5'
+    species_dict = {
+        'mouse': 'Mus',
+        'human': 'Homo'
+    }
+    species = species_dict.get(species, '')
 
     gene_id = await Gene.filter(name=gene, type=species).values('id', 'name')
     print(f'species={species},name={gene} ==> gene_id={gene_id}')
-    print(gene_id[0]['id'])
 
     if species == 'Homo':
         gene_id[0]['id'] -= 25239
