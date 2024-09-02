@@ -126,9 +126,9 @@ async def getGSE(species: str, gse: str, gene: str):
 
 @api.get("/{species}/omics")
 async def GetOmicsData(species: str, omics: str):
-    if species == 'Mus':
+    if species == 'mouse':
         omics = await MusValue.filter(omics=omics).values('GEOAccession__GSE', 'tissue')
-    elif species == 'Homo':
+    elif species == 'human':
         omics = await HomoValue.filter(omics=omics).values('GEOAccession_id', 'tissue')
     else:
         print('Omic Search Error')
@@ -152,22 +152,28 @@ async def GetOmicsData(species: str, omics: str):
 async def GetTissueData(species: str, omics: str, tissue: str):
     print(species, omics, tissue)
 
-    if species == 'Mus':
+    if species == 'mouse':
         GseData = await MusValue.filter(omics=omics, tissue=tissue).distinct().values('GEOAccession__GSE',
                                                                                       'GEOAccession__title')
-    elif species == 'Homo':
+    elif species == 'human':
         GseData = await HomoValue.filter(omics=omics, tissue=tissue).distinct().values('GEOAccession__GSE',
                                                                                        'GEOAccession__title')
     else:
         print('Omic-Tissue Search Error')
         return respone_code.resp_400(message="Omic-Tissue Error")
-
+    print(GseData)
     return respone_code.resp_200(data=GseData)
 
 
 @api.get("/{species}/omics/tissue/gene")
 async def GetDetailData(species: str, omics: str, gene: str, tissue: Union[str, None] = None):
     print(species, omics, tissue, gene)
+    species_dict = {
+        'mouse': 'Mus',
+        'human': 'Homo'
+    }
+    species = species_dict.get(species, '')
+
     if tissue is None:
         if species == 'Mus':
             GseData = await MusValue.filter(omics=omics, gene__name=gene, gene__type=species).distinct().order_by(
@@ -178,7 +184,7 @@ async def GetDetailData(species: str, omics: str, gene: str, tissue: Union[str, 
             GseData = await HomoValue.filter(omics=omics, gene__name=gene, gene__type=species).distinct().order_by(
                 'pvalue').values('GEOAccession__GSE', 'GEOAccession__title', 'gene__name', 'condition', 'pvalue', 'amp',
                                  'R2', 'phase', 'peakTime', 'offset')
-            print('no tissue Mus', GseData)
+            print('no tissue human', GseData)
         else:
             print('Detail Search Error')
             return respone_code.resp_400(message="Detail Error")
@@ -192,13 +198,13 @@ async def GetDetailData(species: str, omics: str, gene: str, tissue: Union[str, 
                                             gene__type=species).distinct().order_by(
                 'pvalue').values('GEOAccession__GSE', 'GEOAccession__title', 'gene__name', 'condition', 'pvalue', 'amp',
                                  'phase', 'R2', 'peakTime', 'offset')
-            print('no tissue Mus', GseData)
+            print('tissue Mus', GseData)
         elif species == 'Homo':
             GseData = await HomoValue.filter(omics=omics, tissue=tissue, gene__name=gene,
                                              gene__type=species).distinct().order_by(
                 'pvalue').values('GEOAccession__GSE', 'GEOAccession__title', 'gene__name', 'condition', 'pvalue', 'amp',
                                  'phase', 'R2', 'peakTime', 'offset')
-            print('no tissue Mus', GseData)
+            print('tissue human', GseData)
         else:
             print('Detail Search Error')
             return respone_code.resp_400(message="Detail Error")
