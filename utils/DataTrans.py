@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
-def getGseGeneData(raw_data,name):
+
+
+def getGseGeneData(raw_data, name):
     transformed_data = []
     condition_data = []
     for item in raw_data:
@@ -8,13 +10,12 @@ def getGseGeneData(raw_data,name):
         condition_data.append('_'.join(item["attr"].split('/')[2:4]))
         for col, expra in zip(item["col"], item[name]):
             ct = col.split('_')[1]
-
             if ct not in ct_data:
                 ct_data[ct] = []
             ct_data[ct].append(expra)
 
         transformed_data.append(ct_data)
-    print('transformed_data',transformed_data)
+    print('transformed_data', transformed_data)
 
     result = []
     # num = len(transformed_data[0])
@@ -43,6 +44,6 @@ def getGseGeneData(raw_data,name):
         # for key in item:
         #     tmp.extend([float(value) for value in item[key]])
         # result.append([tmp[i:i + num] for i in range(0, len(tmp), num)])
-    print('conditionData',condition_data)
-    print('result',result)
+    print('conditionData', condition_data)
+    print('result', result)
     return result, xAxis, condition_data

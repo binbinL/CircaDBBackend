@@ -292,14 +292,5 @@ async def getAllGEO():
 
     json_data_list = [dict(data) for data in combined_data]
     print(json_data_list)
-    # alldata = {}
-    # for i in combined_data:
-    #     json_data = {key: value for key, value in i}
-    #     print(json_data)
-    #     # # 转换为 JSON 格式
-    #     # json_string = json.dumps(json_data, indent=4)
-    #     alldata.
-
-    # combined_data = json.dumps(combined_data)
     print(json_data_list)
     return respone_code.resp_200(data=json_data_list)
