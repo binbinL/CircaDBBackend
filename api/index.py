@@ -9,6 +9,7 @@ import pandas as pd
 import h5py
 from utils import respone_code
 from utils import DataTrans
+import json
 
 api = APIRouter()
 
@@ -105,14 +106,16 @@ async def getGSE(species: str, gse: str, gene: str):
             data.append(tmp)
     result, xAxis, condition_data = DataTrans.getGseGeneData(data, gene)
     if species == 'Mus':
-        DetialData = await MusValue.filter(GEOAccession__GSE=gse, gene__name=gene).values('gene__name', 'tissue',
+        DetialData = await MusValue.filter(GEOAccession__GSE=gse, gene__name=gene).values('GEOAccession__GSE',
+                                                                                          'gene__name', 'tissue',
                                                                                           'condition',
                                                                                           'pvalue', 'R2', 'amp',
                                                                                           'phase',
                                                                                           'peakTime', 'offset')
     elif species == 'Homo':
         DetialData = await (
-            HomoValue.filter(GEOAccession__GSE=gse, gene__name=gene).values('gene__name', 'tissue', 'condition',
+            HomoValue.filter(GEOAccession__GSE=gse, gene__name=gene).values('GEOAccession__GSE', 'gene__name', 'tissue',
+                                                                            'condition',
                                                                             'pvalue', 'R2',
                                                                             'amp', 'phase', 'peakTime', 'offset'))
     else:
@@ -126,6 +129,62 @@ async def getGSE(species: str, gse: str, gene: str):
     print(res)
     print(res['DetialData'])
     return respone_code.resp_200(data=res)
+
+
+# @api.get("/analyse/{species}/gse/gene/tissue/condition")
+# async def getCosLine(species: str, gse: str, gene: str, tissue: str, condition: str):
+#     h5_path = './data/merged.h5'
+#     species_dict = {
+#         'mouse': 'Mus',
+#         'human': 'Homo'
+#     }
+#     species = species_dict.get(species, '')
+#
+#     gene_id = await Gene.filter(name=gene, type=species).values('id', 'name')
+#     print(f'species={species},name={gene} ==> gene_id={gene_id}')
+#
+#     if species == 'Homo':
+#         gene_id[0]['id'] -= 25239
+#
+#     print(f'species={species},name={gene} ==> gene_id={gene_id}')
+#     full_path = get_matrix(h5_path, gse)
+#     data = []
+#     with h5py.File(os.path.join(h5_path), 'r') as f:
+#         for t in full_path:
+#             tmp = {}
+#             dset = f[t]
+#             tmp['attr'] = t  # h5路径
+#             # ?
+#             for dict in gene_id:
+#                 tmp[dict['name']] = [str(num) for num in list(dset[()])[dict['id'] - 1]]
+#             tmp['col'] = list(f['/'.join(t.split('/')[0:-1])].attrs['col'])
+#             print(tmp)
+#             data.append(tmp)
+#     result, xAxis, condition_data = DataTrans.getGseGeneData(data, gene)
+#     if species == 'Mus':
+#         DetialData = await MusValue.filter(GEOAccession__GSE=gse, gene__name=gene).values('GEOAccession__GSE',
+#                                                                                           'gene__name', 'tissue',
+#                                                                                           'condition',
+#                                                                                           'pvalue', 'R2', 'amp',
+#                                                                                           'phase',
+#                                                                                           'peakTime', 'offset')
+#     elif species == 'Homo':
+#         DetialData = await (
+#             HomoValue.filter(GEOAccession__GSE=gse, gene__name=gene).values('GEOAccession__GSE', 'gene__name', 'tissue',
+#                                                                             'condition',
+#                                                                             'pvalue', 'R2',
+#                                                                             'amp', 'phase', 'peakTime', 'offset'))
+#     else:
+#         return respone_code.resp_400(message="Data not found")
+#
+#     res = {}
+#     res['data'] = result
+#     res['xAxis'] = xAxis
+#     res['condition'] = condition_data
+#     res['DetialData'] = DetialData
+#     print(res)
+#     print(res['DetialData'])
+#     return respone_code.resp_200(data=res)
 
 
 @api.get("/{species}/omics")
@@ -217,3 +276,30 @@ async def GetDetailData(species: str, omics: str, gene: str, tissue: Union[str, 
         #     'JTK_pvalue').values('GSE__GSE', 'GSE__title', 'gene__name', 'condition', 'JTK_pvalue', 'JTK_BH_Q')
         # print(GseData)
     return respone_code.resp_200(data=GseData)
+
+
+@api.get("/download/")
+async def getAllGEO():
+    homoData = await (
+        HomoValue.all().values('GEOAccession__GSE', 'GEOAccession__title', 'condition', 'tissue'))
+    musData = await (
+        MusValue.all().values('GEOAccession__GSE', 'GEOAccession__title', 'condition', 'tissue'))
+
+    homo_data_unique = list({tuple(d.items()) for d in homoData})
+    mus_data_unique = list({tuple(d.items()) for d in musData})
+    combined_data = homo_data_unique + mus_data_unique
+
+
+    json_data_list = [dict(data) for data in combined_data]
+    print(json_data_list)
+    # alldata = {}
+    # for i in combined_data:
+    #     json_data = {key: value for key, value in i}
+    #     print(json_data)
+    #     # # 转换为 JSON 格式
+    #     # json_string = json.dumps(json_data, indent=4)
+    #     alldata.
+
+    # combined_data = json.dumps(combined_data)
+    print(json_data_list)
+    return respone_code.resp_200(data=json_data_list)
